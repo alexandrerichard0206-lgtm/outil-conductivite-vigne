@@ -1,0 +1,212 @@
+
+<style>
+  .wrap { padding: 1.5rem 0; font-family: var(--font-sans); }
+  .row { display: flex; align-items: center; gap: 12px; margin-bottom: 1.25rem; }
+  .lbl { font-size: 13px; color: var(--color-text-secondary); min-width: 110px; }
+  select { font-size: 13px; padding: 4px 8px; background: var(--color-background-primary); color: var(--color-text-primary); border: 0.5px solid var(--color-border-secondary); border-radius: var(--border-radius-md); }
+  .cond-display { font-size: 22px; font-weight: 500; color: var(--color-text-primary); min-width: 70px; text-align: right; }
+  .equiv-box { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.6rem 1rem; margin-top: 0.5rem; display: flex; gap: 16px; flex-wrap: wrap; }
+  .equiv-item { font-size: 12px; color: var(--color-text-secondary); }
+  .equiv-item span { color: var(--color-text-primary); font-weight: 500; }
+  .result-grid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 10px; margin-top: 1.25rem; }
+  .rc { background: var(--color-background-secondary); border-radius: var(--border-radius-md); padding: 0.9rem 1rem; }
+  .rc-label { font-size: 12px; color: var(--color-text-secondary); margin-bottom: 4px; }
+  .rc-val { font-size: 19px; font-weight: 500; color: var(--color-text-primary); }
+  .rc-unit { font-size: 12px; color: var(--color-text-secondary); margin-top: 2px; }
+  .gauge-wrap { margin: 1.25rem 0 0.5rem; }
+  .gauge-bar-outer { position: relative; height: 22px; border-radius: 11px; overflow: visible; margin-bottom: 6px; }
+  .gauge-bar-inner { width: 100%; height: 100%; border-radius: 11px; background: linear-gradient(to right, #2ecc71, #a8e063, #f9ca24, #f0932b, #e55039, #c0392b); }
+  .gauge-needle { position: absolute; top: -5px; width: 3px; height: 32px; background: var(--color-text-primary); border-radius: 2px; transform: translateX(-50%); transition: left 0.2s; }
+  .gauge-needle::after { content: ''; position: absolute; bottom: -5px; left: 50%; transform: translateX(-50%); width: 9px; height: 9px; border-radius: 50%; background: var(--color-text-primary); }
+  .gauge-labels { display: flex; justify-content: space-between; font-size: 11px; color: var(--color-text-tertiary); margin-top: 2px; }
+  .status-badge { display: inline-block; padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 500; margin-top: 0.75rem; }
+  .legend-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 6px; margin-top: 1rem; }
+  .legend-item { display: flex; align-items: center; gap: 8px; font-size: 12px; color: var(--color-text-secondary); }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .note { font-size: 12px; color: var(--color-text-tertiary); margin-top: 1rem; border-top: 0.5px solid var(--color-border-tertiary); padding-top: 0.75rem; }
+  .anion-badge { display: inline-block; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin-left: 6px; background: var(--color-background-info); color: var(--color-text-info); vertical-align: middle; font-weight: 500; }
+</style>
+
+<div class="wrap">
+  <div class="row">
+    <span class="lbl">Sel dissous</span>
+    <select id="salt" onchange="update()">
+      <option value="nacl">NaCl — chlorure de sodium</option>
+      <option value="na2so4">Na&#x2082;SO&#x2084; — sulfate de sodium</option>
+      <option value="naoh">NaOH — hydroxyde de sodium</option>
+    </select>
+  </div>
+
+  <div class="row">
+    <span class="lbl">Unité</span>
+    <select id="unit" onchange="changeUnit()">
+      <option value="mScm">mS/cm</option>
+      <option value="dSm">dS/m</option>
+      <option value="Sm">S/m</option>
+      <option value="mSm">mS/m</option>
+      <option value="uScm">µS/cm</option>
+    </select>
+  </div>
+
+  <div class="row">
+    <span class="lbl">Conductivité</span>
+    <input type="range" id="cond" style="flex:1;" oninput="update()">
+    <span class="cond-display" id="cond-out">3.0</span>
+    <span style="font-size:13px;color:var(--color-text-secondary);min-width:48px;" id="unit-label">mS/cm</span>
+  </div>
+
+  <div class="equiv-box" id="equiv-box"></div>
+
+  <div class="gauge-wrap">
+    <div class="gauge-bar-outer">
+      <div class="gauge-bar-inner"></div>
+      <div class="gauge-needle" id="needle"></div>
+    </div>
+    <div class="gauge-labels">
+      <span>0</span><span>0.5</span><span>1</span><span>1.5</span><span>2</span><span>&#x2265;2.5 mS/cm</span>
+    </div>
+  </div>
+
+  <div id="status-badge" class="status-badge"></div>
+
+  <div class="legend-grid">
+    <div class="legend-item"><div class="legend-dot" style="background:#2ecc71"></div> &lt; 0,5 mS/cm &#x2014; Idéal</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#a8e063"></div> 0,5&#x2013;1,0 &#x2014; Favorable</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f9ca24"></div> 1,0&#x2013;1,5 &#x2014; Tolérable</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#f0932b"></div> 1,5&#x2013;2,0 &#x2014; Risque modéré</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#e55039"></div> 2,0&#x2013;2,5 &#x2014; Risque élevé</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#c0392b"></div> &gt; 2,5 mS/cm &#x2014; Nocif</div>
+  </div>
+
+  <div class="result-grid" id="result-grid">
+    <div class="rc">
+      <div class="rc-label">Sel total dissous</div>
+      <div class="rc-val" id="res-salt">—</div>
+      <div class="rc-unit">g/L de sel</div>
+    </div>
+    <div class="rc">
+      <div class="rc-label">Sodium (Na&#x207A;)</div>
+      <div class="rc-val" id="res-na">—</div>
+      <div class="rc-unit">g/L de Na&#x207A;</div>
+    </div>
+    <div class="rc" id="rc-anion">
+      <div class="rc-label" id="anion-label">Chlorure (Cl&#x207B;)</div>
+      <div class="rc-val" id="res-anion">—</div>
+      <div class="rc-unit" id="anion-unit">g/L de Cl&#x207B;</div>
+    </div>
+    <div class="rc">
+      <div class="rc-label">TDS approx.</div>
+      <div class="rc-val" id="res-tds">—</div>
+      <div class="rc-unit">mg/L</div>
+    </div>
+    <div class="rc">
+      <div class="rc-label">Sodium (Na&#x207A;)</div>
+      <div class="rc-val" id="res-na-mgl">—</div>
+      <div class="rc-unit">mg/L de Na&#x207A;</div>
+    </div>
+    <div class="rc">
+      <div class="rc-label" id="anion-label-mgl">Chlorure (Cl&#x207B;)</div>
+      <div class="rc-val" id="res-anion-mgl">—</div>
+      <div class="rc-unit" id="anion-unit-mgl">mg/L de Cl&#x207B;</div>
+    </div>
+  </div>
+
+  <div class="note">
+    Conversions approximatives pour solutions diluées à 25 °C. Seuils indicatifs pour l'irrigation de la vigne.
+  </div>
+</div>
+
+<script>
+const saltFactors = {
+  nacl:   { msToGl: 0.5,   naFrac: 0.3934, anionFrac: 0.6066, anionName: 'Cl&#x207B;',   anionSym: 'Cl&#x207B;'   },
+  na2so4: { msToGl: 0.7,   naFrac: 0.3237, anionFrac: 0.6763, anionName: 'SO&#x2084;&#x00B2;&#x207B;', anionSym: 'SO&#x2084;&#x00B2;&#x207B;' },
+  naoh:   { msToGl: 0.45,  naFrac: 0.5750, anionFrac: 0.4250, anionName: 'OH&#x207B;',   anionSym: 'OH&#x207B;'   },
+};
+
+const units = {
+  mScm: { label:'mS/cm', toMScm:1,     min:0.01, max:5,     step:0.01,  dec:2 },
+  dSm:  { label:'dS/m',  toMScm:1,     min:0.01, max:5,     step:0.01,  dec:2 },
+  Sm:   { label:'S/m',   toMScm:100,   min:0.0001,max:0.05, step:0.0001,dec:4 },
+  mSm:  { label:'mS/m',  toMScm:0.01,  min:1,    max:500,   step:1,     dec:0 },
+  uScm: { label:'µS/cm', toMScm:0.001, min:10,   max:5000,  step:10,    dec:0 },
+};
+
+const equivUnits  = ['mScm','dSm','Sm','mSm','uScm'];
+const equivLabels = { mScm:'mS/cm', dSm:'dS/m', Sm:'S/m', mSm:'mS/m', uScm:'µS/cm' };
+const GAUGE_MAX   = 2.5;
+
+const thresholds = [
+  { max:0.5,      bg:'#d4f5e2', text:'#0e6637', label:'Idéal pour la vigne' },
+  { max:1.0,      bg:'#eaf7d0', text:'#3a6e0a', label:'Favorable' },
+  { max:1.5,      bg:'#fef6d0', text:'#7a5c00', label:'Tolérable — surveiller' },
+  { max:2.0,      bg:'#fde8cc', text:'#7a3500', label:'Risque modéré — éviter si possible' },
+  { max:2.5,      bg:'#fcd9d3', text:'#7a1a0a', label:'Risque élevé — stress salin probable' },
+  { max:Infinity, bg:'#f5c6c0', text:'#5a0a04', label:'Nocif — dommages sur la vigne' },
+];
+
+function getValInMScm() {
+  const u = document.getElementById('unit').value;
+  return parseFloat(document.getElementById('cond').value) * units[u].toMScm;
+}
+function convertFromMScm(mscm, uKey) { return mscm / units[uKey].toMScm; }
+function formatVal(v, dec) { return dec === 0 ? Math.round(v).toString() : v.toFixed(dec); }
+
+function changeUnit() {
+  const u   = document.getElementById('unit').value;
+  const cfg = units[u];
+  const mscm = getValInMScm();
+  const s = document.getElementById('cond');
+  s.min = cfg.min; s.max = cfg.max; s.step = cfg.step;
+  s.value = Math.min(Math.max(convertFromMScm(mscm, u), cfg.min), cfg.max);
+  document.getElementById('unit-label').textContent = cfg.label;
+  update();
+}
+
+function update() {
+  const u   = document.getElementById('unit').value;
+  const cfg = units[u];
+  const raw = parseFloat(document.getElementById('cond').value);
+  document.getElementById('cond-out').textContent = formatVal(raw, cfg.dec);
+
+  const mscm    = raw * cfg.toMScm;
+  const saltKey = document.getElementById('salt').value;
+  const f       = saltFactors[saltKey];
+
+  const pct = Math.min(mscm / GAUGE_MAX, 1) * 100;
+  document.getElementById('needle').style.left = pct + '%';
+
+  const st = thresholds.find(t => mscm < t.max) || thresholds[thresholds.length - 1];
+  const badge = document.getElementById('status-badge');
+  badge.style.background = st.bg;
+  badge.style.color = st.text;
+  badge.textContent = st.label;
+
+  const saltGl  = mscm * f.msToGl;
+  const naGl    = saltGl * f.naFrac;
+  const anionGl = saltGl * f.anionFrac;
+
+  document.getElementById('res-salt').textContent     = saltGl.toFixed(2);
+  document.getElementById('res-na').textContent        = naGl.toFixed(2);
+  document.getElementById('res-anion').textContent     = anionGl.toFixed(2);
+  document.getElementById('res-tds').textContent       = Math.round(saltGl * 640);
+  document.getElementById('res-na-mgl').textContent    = Math.round(naGl * 1000);
+  document.getElementById('res-anion-mgl').textContent = Math.round(anionGl * 1000);
+
+  document.getElementById('anion-label').innerHTML     = f.anionName + ' (' + f.anionSym + ')';
+  document.getElementById('anion-unit').innerHTML      = 'g/L de ' + f.anionSym;
+  document.getElementById('anion-label-mgl').innerHTML = f.anionName + ' (' + f.anionSym + ')';
+  document.getElementById('anion-unit-mgl').innerHTML  = 'mg/L de ' + f.anionSym;
+
+  document.getElementById('equiv-box').innerHTML = equivUnits
+    .filter(k => k !== u)
+    .map(k => {
+      const v = convertFromMScm(mscm, k);
+      return '<span class="equiv-item">' + equivLabels[k] + ' : <span>' + formatVal(v, units[k].dec) + '</span></span>';
+    }).join('');
+}
+
+const s0 = document.getElementById('cond');
+const c0 = units['mScm'];
+s0.min = c0.min; s0.max = c0.max; s0.step = c0.step; s0.value = 3;
+update();
+</script>
